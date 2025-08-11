@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Loader from "./Loader.jsx";
 import HelpModal from "./HelpModal.jsx";
-// Removed the overlaying GridPicker import to avoid UI overlap
-// import GridPicker from "./GridPicker.jsx";
+import GridPicker from "./GridPicker.jsx";
 
 /**
  * StreamMESH - Multi-Twitch Viewer (production-ready)
@@ -19,7 +18,6 @@ import HelpModal from "./HelpModal.jsx";
 const LAYOUTS = {
   "1x1": { rows: 1, cols: 1, label: "1×1", minTiles: 1, maxTiles: 1 },
   "2x1": { rows: 1, cols: 2, label: "2×1", minTiles: 2, maxTiles: 2 },
-  "3x1": { rows: 1, cols: 3, label: "3×1", minTiles: 3, maxTiles: 3 },
   "1x2": { rows: 2, cols: 1, label: "1×2", minTiles: 2, maxTiles: 2 },
   "2x2": { rows: 2, cols: 2, label: "2×2", minTiles: 2, maxTiles: 4 },
   "3x2": { rows: 2, cols: 3, label: "3×2", minTiles: 2, maxTiles: 6 },
@@ -125,27 +123,6 @@ function ShareLink({ appState }) {
   );
 }
 
-/** Compact layout selector (closed by default, shows current value) */
-function LayoutSelect({ layoutKey, onChange }) {
-  const entries = Object.entries(LAYOUTS);
-  return (
-    <label className="inline-flex items-center gap-2 text-xs text-white/70">
-      <span>Layout</span>
-      <select
-        className="bg-[#111319] border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
-        value={layoutKey}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {entries.map(([key, meta]) => (
-          <option key={key} value={key}>
-            {meta.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 export default function App() {
   const [loading, setLoading] = React.useState(true);
   const [appState, setAppState] = useRestoredState();
@@ -186,10 +163,9 @@ export default function App() {
     });
   };
 
-  // Expand to the layout’s full capacity so every cell can accept input immediately
   const setLayout = (layout) => {
     const m = LAYOUTS[layout];
-    setAppState((s) => ({ ...s, layout, activeCount: m.maxTiles }));
+    setAppState((s) => ({ ...s, layout, activeCount: Math.min(s.activeCount, m.maxTiles) }));
   };
 
   const visibleCount = React.useMemo(
@@ -201,17 +177,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full bg-[#0b0b0b] text-white flex flex-col">
-      {/* Top bar (no overlay, no left-side badges) */}
+      {/* Top bar */}
       <header className="sticky top-0 z-40 w-full bg-[#0b0b0b] border-b border-[#23272f] shadow flex items-center px-4 py-3">
         <span className="text-lg font-bold select-none">
           Stream<span className="text-[#7c3aed]">MESH</span>
         </span>
+        <span className="ml-4 px-2 py-1 rounded bg-[#181c24] text-xs font-medium text-white/80">
+          Layout: {meta.label}
+        </span>
+        <span className="ml-4 text-xs text-white/60">
+          Tiles: {visibleCount}/{meta.maxTiles}
+        </span>
         <div className="flex-1" />
-        <div className="flex items-center gap-3">
-          <LayoutSelect layoutKey={appState.layout} onChange={setLayout} />
-          <span className="text-xs text-white/60">
-            Tiles: {visibleCount}/{meta.maxTiles}
-          </span>
+        <GridPicker
+          value={{ rows: LAYOUTS[appState.layout].rows, cols: LAYOUTS[appState.layout].cols }}
+          onChange={(sel) => {
+            // sel may be {rows, cols} or {rows, cols, key}
+            const k = sel.key || `${sel.cols}x${sel.rows}`;
+            setLayout(k);
+          }}
+        />
+        <div className="ml-4">
           <ShareLink appState={appState} />
         </div>
       </header>
@@ -344,13 +330,8 @@ function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, on
       className="relative flex flex-col h-full min-h-0 bg-[#181c24] rounded-2xl overflow-hidden border border-[#23272f] shadow-lg group"
       style={{ minHeight: 0, height: "100%" }}
     >
-      {/* Overlay controls — always visible when channel is empty; on hover otherwise */}
-      <div
-        className={
-          "absolute top-0 left-0 w-full flex items-center gap-2 px-3 py-2 bg-black/60 backdrop-blur-sm z-10 transition " +
-          (channel ? "opacity-0 group-hover:opacity-100" : "opacity-100")
-        }
-      >
+      {/* Overlay controls */}
+      <div className="absolute top-0 left-0 w-full flex items-center gap-2 px-3 py-2 bg-black/60 backdrop-blur-sm z-10 opacity-0 group-hover:opacity-100 transition">
         <input
           className="flex-1 px-2 py-1 rounded bg-white/80 text-black text-xs"
           placeholder="Channel"
