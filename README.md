@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-Open the printed URL (e.g. http://localhost:5173). The app auto-sets Twitch's `parent` param to your current domain/host.
+Open the printed URL (e.g. blahblah.com). The app auto-sets Twitch's `parent` param to your current domain/host.
 
 ## Build
 
@@ -45,4 +45,5 @@ Twitch requires a `parent` URL param matching your domain. This app uses `window
 
 ## Shareable Links
 After entering channels and selecting layout, use the **Copy** button to get a URL that restores everything.
+
 
