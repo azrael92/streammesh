@@ -1,0 +1,225 @@
+{
+  "main": {
+    "id": "a353585b9ca138ee",
+    "type": "split",
+    "children": [
+      {
+        "id": "3d3cd788ca512d7f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "da46bee6ee1a9a26",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Book 1 - The President's Bond.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Book 1 - The President's Bond"
+            }
+          },
+          {
+            "id": "ddf3d54436070926",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Book 1 - The President's Bond.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Book 1 - The President's Bond"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f647870a1a922492",
+    "type": "split",
+    "children": [
+      {
+        "id": "22db1e26635bfdb2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "daa522e7ed4bd48f",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "be428260019b29cc",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "98bb52fff4bb950f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "69f65055558e33da",
+    "type": "split",
+    "children": [
+      {
+        "id": "f5f03bff7b246c55",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8ea1c9db4e9c4354",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "1.1.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for 1.1"
+            }
+          },
+          {
+            "id": "81771c53ed4ecfaf",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "1.1.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from 1.1"
+            }
+          },
+          {
+            "id": "f8497146dd1838bd",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "fbe9a9f1491a9c20",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "1.1.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of 1.1"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "ddf3d54436070926",
+  "lastOpenFiles": [
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_004_chunk_00.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_003_chunk_01.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_003_chunk_00.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_002_chunk_01.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_002_chunk_00.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_001_chunk_01.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_001_chunk_00.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_001_chunk_02.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_01_Silent_Streets.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_00_The_Awakening.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/mistral_attempt/scene_04_Hunters_in_the_Dark.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/mistral_attempt/scene_03_The_Dreamwalker.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/mistral_attempt/scene_02_Whispers_in_the_Mist.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/mistral_attempt/scene_01_Silent_Streets.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/mistral_attempt/scene_00_The_Awakening.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/mistral_attempt",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_04_Hunters_in_the_Dark.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_03_The_Dreamwalker.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/scene_02_Whispers_in_the_Mist.md",
+    "writingTrainer/scripts/build_book.py",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated/progress.json",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/progress.json",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/generated",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening/book_outline.md",
+    "writingTrainer/books/TestSeries/Book_1_The_Awakening",
+    "writingTrainer/books/TestSeries/series_bible.md",
+    "writingTrainer/books/TestSeries",
+    "writingTrainer/requirements.txt",
+    "writingTrainer/scripts/requirements.txt",
+    "writingTrainer/books",
+    "**Book 2 - The Queen’s Guard**.md",
+    "Book 2 - The President’s Warmth.md",
+    "The President's Secret - Series Bible.md",
+    "Romance Template.md",
+    "Book 3 - The President's Wake.md",
+    "Book 1 - The President's Bond.md"
+  ]
+}
