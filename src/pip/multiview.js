@@ -58,25 +58,7 @@ function initIOSWebKitPiP() {
 function createMultiviewVideo() {
   if (multiviewVideo) return; // Already exists
   
-  // Create canvas for multiview
-  multiviewCanvas = document.createElement('canvas');
-  multiviewCanvas.width = 640;  // 16:9 aspect ratio
-  multiviewCanvas.height = 360;
-  multiviewCanvas.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 320px;
-    height: 180px;
-    border: 2px solid #7c3aed;
-    border-radius: 8px;
-    background: #000;
-    z-index: 1000;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  `;
-  
-  // Create video element
+  // Create video element that iOS will recognize as PiP-eligible
   multiviewVideo = document.createElement('video');
   multiviewVideo.style.cssText = `
     position: fixed;
@@ -91,18 +73,16 @@ function createMultiviewVideo() {
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   `;
-  multiviewVideo.muted = true;
+  multiviewVideo.muted = false; // Must be unmuted for iOS PiP
   multiviewVideo.playsInline = true;
   multiviewVideo.setAttribute('playsinline', '');
   multiviewVideo.setAttribute('webkit-playsinline', '');
   multiviewVideo.setAttribute('controls', '');
+  multiviewVideo.setAttribute('autoplay', '');
+  multiviewVideo.setAttribute('loop', '');
   
-  // Add click handler to toggle PiP
-  multiviewVideo.addEventListener('click', () => {
-    if (supportsWebKitPiP && multiviewVideo.webkitSupportsPresentationMode) {
-      multiviewVideo.webkitSetPresentationMode('picture-in-picture');
-    }
-  });
+  // Create a simple animated video that iOS will recognize
+  createAnimatedVideo();
   
   // Add to page
   document.body.appendChild(multiviewVideo);
@@ -110,9 +90,79 @@ function createMultiviewVideo() {
   console.log('Multiview video created for iOS PiP');
 }
 
+// Create a simple animated video that iOS will recognize as PiP-eligible
+function createAnimatedVideo() {
+  if (!multiviewVideo) return;
+  
+  // Create a canvas to generate video frames
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+  
+  let frameCount = 0;
+  
+  function drawFrame() {
+    // Clear canvas
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw animated background
+    const time = Date.now() * 0.001;
+    const hue = (time * 20) % 360;
+    ctx.fillStyle = `hsl(${hue}, 70%, 20%)`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grid pattern
+    ctx.strokeStyle = '#7c3aed';
+    ctx.lineWidth = 2;
+    const gridSize = 40;
+    for (let x = 0; x < canvas.width; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+    
+    // Draw animated text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('StreamMESH', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.fillText('Multiview PiP', canvas.width / 2, canvas.height / 2 + 20);
+    
+    // Draw animated indicator
+    const pulseSize = Math.sin(time * 3) * 10 + 20;
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2 + 60, pulseSize, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Convert to video stream
+    const stream = canvas.captureStream(30);
+    multiviewVideo.srcObject = stream;
+    
+    // Ensure video is playing
+    if (multiviewVideo.paused) {
+      multiviewVideo.play().catch(console.warn);
+    }
+    
+    frameCount++;
+    requestAnimationFrame(drawFrame);
+  }
+  
+  drawFrame();
+}
+
 // Update multiview video with current streams for iOS PiP
 function updateMultiviewVideo(channels, parentHost) {
-  if (!isIOS || !supportsWebKitPiP || !multiviewVideo || !multiviewCanvas) return;
+  if (!isIOS || !supportsWebKitPiP || !multiviewVideo) return;
   
   try {
     const ctx = multiviewCanvas.getContext('2d');

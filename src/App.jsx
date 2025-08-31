@@ -248,7 +248,7 @@ export default function App() {
     try {
       const channels = getVisibleChannels(appState, visibleCount);
       if (channels.length === 0) {
-        alert('No channels to display. Please add some Twitch channels first.');
+        console.log('No channels to display for PiP');
         return;
       }
       
@@ -257,13 +257,10 @@ export default function App() {
         startIndex: 0
       });
       
-      // Show appropriate message based on result
-      if (result?.type === 'ios-multiview-pip') {
-        alert('Multiview PiP ready! You should see a small video preview in the top-right corner.\n\nOn iOS:\n• Click the video to enter PiP mode\n• Or swipe up to home screen to activate PiP automatically\n\nMake sure "Start PiP Automatically" is ON in Settings → General → Picture in Picture');
-      }
+      // No alerts - just let the feature work silently
     } catch (error) {
       console.error('Failed to open multiview PiP:', error);
-      alert('Failed to open multiview PiP. Please check console for details.');
+      // No alerts - just log to console
     }
   };
 
