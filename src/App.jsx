@@ -3,7 +3,7 @@ import GridPicker from "./GridPicker";
 import HelpModal from "./HelpModal";
 import ShareLink from "./Sharelink";
 import Loader from "./Loader";
-import { openMultiViewPiP, closeMultiViewPiP, isPiPOpen, updatePiPChannels } from "./pip/multiview";
+import { openMultiViewPiP, closeMultiViewPiP, isPiPOpen, updatePiPChannels, initializePiP } from "./pip/multiview";
 
 /**
  * StreamMESH - Multi-Twitch Viewer (production-ready)
@@ -181,10 +181,18 @@ export default function App() {
   const [appState, setAppState] = useRestoredState();
   const [helpOpen, setHelpOpen] = useState(false);
   const isMobile = useIsMobile();
+  const [pipSupport, setPipSupport] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
+  }, []);
+
+  // Initialize PiP support
+  useEffect(() => {
+    const support = initializePiP();
+    setPipSupport(support);
+    console.log('PiP Support:', support);
   }, []);
 
   // Calculate visible count first (needed by PiP functions)
@@ -244,22 +252,15 @@ export default function App() {
         return;
       }
       
-      // Check if we're on iOS and suggest app alternative
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS && !('documentPictureInPicture' in window)) {
-        const useApp = confirm(
-          'Document PiP is not supported on iOS Safari. Would you like to open the first channel in the Twitch app instead?'
-        );
-        if (useApp && channels[0]) {
-          window.open(`https://twitch.tv/${channels[0].channel}`, '_blank');
-          return;
-        }
-      }
-      
-      await openMultiViewPiP(channels, { 
+      const result = await openMultiViewPiP(channels, { 
         parentHost: parentDomain,
         startIndex: 0
       });
+      
+      // Show appropriate message based on result
+      if (result?.type === 'ios-native-pip') {
+        alert('PiP enabled! On iOS, swipe up to home screen to activate Picture-in-Picture for any stream.\n\nMake sure "Start PiP Automatically" is ON in Settings → General → Picture in Picture');
+      }
     } catch (error) {
       console.error('Failed to open multiview PiP:', error);
       alert('Failed to open multiview PiP. Please check console for details.');
@@ -327,7 +328,7 @@ export default function App() {
                   onClick={handleMultiviewPiP}
                   className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                 >
-                  📺 Multiview PiP
+                  {pipSupport?.isIOS ? '📱 Enable PiP' : '📺 Multiview PiP'}
                 </button>
                 <span className="text-sm text-white/60">Share this layout</span>
               </div>
@@ -357,7 +358,7 @@ export default function App() {
                 onClick={handleMultiviewPiP}
                 className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
               >
-                📺 Multiview PiP
+                {pipSupport?.isIOS ? '📱 Enable PiP' : '📺 Multiview PiP'}
               </button>
               <ShareLink appState={appState} isMobile={isMobile} />
             </div>
