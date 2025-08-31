@@ -258,8 +258,8 @@ export default function App() {
       });
       
       // Show appropriate message based on result
-      if (result?.type === 'ios-native-pip') {
-        alert('PiP enabled! On iOS, swipe up to home screen to activate Picture-in-Picture for any stream.\n\nMake sure "Start PiP Automatically" is ON in Settings → General → Picture in Picture');
+      if (result?.type === 'ios-multiview-pip') {
+        alert('Multiview PiP ready! You should see a small video preview in the top-right corner.\n\nOn iOS:\n• Click the video to enter PiP mode\n• Or swipe up to home screen to activate PiP automatically\n\nMake sure "Start PiP Automatically" is ON in Settings → General → Picture in Picture');
       }
     } catch (error) {
       console.error('Failed to open multiview PiP:', error);

@@ -11,6 +11,9 @@ let focusedChannel = 0;
 // iOS Native PiP support
 let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 let supportsWebKitPiP = false;
+let multiviewVideo = null;
+let multiviewCanvas = null;
+let multiviewStream = null;
 
 // Calculate best-fit grid layout for given number of channels
 function calculateGridLayout(channelCount) {
@@ -42,28 +45,153 @@ function initIOSWebKitPiP() {
   supportsWebKitPiP = 'webkitSupportsPresentationMode' in document.createElement('video');
   
   if (supportsWebKitPiP) {
-    console.log('iOS WebKit PiP supported');
+    // Create visible multiview video element for iOS PiP
+    createMultiviewVideo();
+    console.log('iOS WebKit PiP supported - multiview video created');
     return true;
   }
   
   return false;
 }
 
-// Enable PiP for all visible Twitch iframes on iOS
-function enablePiPForTwitchIframes() {
-  if (!isIOS || !supportsWebKitPiP) return;
+// Create visible multiview video element for iOS PiP
+function createMultiviewVideo() {
+  if (multiviewVideo) return; // Already exists
   
-  // Find all Twitch iframes and make them PiP-eligible
-  const twitchIframes = document.querySelectorAll('iframe[src*="player.twitch.tv"]');
-  twitchIframes.forEach(iframe => {
-    // Ensure iframe has PiP permissions
-    if (!iframe.getAttribute('allow')?.includes('picture-in-picture')) {
-      const currentAllow = iframe.getAttribute('allow') || '';
-      iframe.setAttribute('allow', `${currentAllow}; picture-in-picture`.replace(/^;/, ''));
+  // Create canvas for multiview
+  multiviewCanvas = document.createElement('canvas');
+  multiviewCanvas.width = 640;  // 16:9 aspect ratio
+  multiviewCanvas.height = 360;
+  multiviewCanvas.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    height: 180px;
+    border: 2px solid #7c3aed;
+    border-radius: 8px;
+    background: #000;
+    z-index: 1000;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  `;
+  
+  // Create video element
+  multiviewVideo = document.createElement('video');
+  multiviewVideo.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    height: 180px;
+    border: 2px solid #7c3aed;
+    border-radius: 8px;
+    background: #000;
+    z-index: 1000;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  `;
+  multiviewVideo.muted = true;
+  multiviewVideo.playsInline = true;
+  multiviewVideo.setAttribute('playsinline', '');
+  multiviewVideo.setAttribute('webkit-playsinline', '');
+  multiviewVideo.setAttribute('controls', '');
+  
+  // Add click handler to toggle PiP
+  multiviewVideo.addEventListener('click', () => {
+    if (supportsWebKitPiP && multiviewVideo.webkitSupportsPresentationMode) {
+      multiviewVideo.webkitSetPresentationMode('picture-in-picture');
     }
   });
   
-  console.log(`Enabled PiP for ${twitchIframes.length} Twitch streams`);
+  // Add to page
+  document.body.appendChild(multiviewVideo);
+  
+  console.log('Multiview video created for iOS PiP');
+}
+
+// Update multiview video with current streams for iOS PiP
+function updateMultiviewVideo(channels, parentHost) {
+  if (!isIOS || !supportsWebKitPiP || !multiviewVideo || !multiviewCanvas) return;
+  
+  try {
+    const ctx = multiviewCanvas.getContext('2d');
+    
+    // Clear canvas
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, multiviewCanvas.width, multiviewCanvas.height);
+    
+    if (channels.length === 0) {
+      // Show placeholder
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, multiviewCanvas.width, multiviewCanvas.height);
+      ctx.fillStyle = '#666';
+      ctx.font = '24px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No streams', multiviewCanvas.width / 2, multiviewCanvas.height / 2);
+      return;
+    }
+    
+    // Calculate grid layout
+    const layout = calculateGridLayout(channels.length);
+    const cellWidth = multiviewCanvas.width / layout.cols;
+    const cellHeight = multiviewCanvas.height / layout.rows;
+    
+    // Draw grid
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    
+    // Draw channels
+    channels.forEach((channel, index) => {
+      const row = Math.floor(index / layout.cols);
+      const col = index % layout.cols;
+      const x = col * cellWidth;
+      const y = row * cellHeight;
+      
+      // Draw channel box
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x + 1, y + 1, cellWidth - 2, cellHeight - 2);
+      
+      // Draw channel name
+      ctx.fillStyle = '#fff';
+      ctx.font = `${Math.max(12, cellHeight / 6)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(channel.channel, x + cellWidth / 2, y + cellHeight / 2);
+      
+      // Draw audio indicator if focused
+      if (audioMode === 'single' && index === focusedChannel) {
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(x + 5, y + 5, 20, 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('🔊', x + 15, y + 18);
+      }
+      
+      // Draw grid lines
+      ctx.strokeRect(x, y, cellWidth, cellHeight);
+    });
+    
+    // Convert canvas to video stream
+    if (multiviewStream) {
+      multiviewStream.getTracks().forEach(track => track.stop());
+    }
+    
+    multiviewStream = multiviewCanvas.captureStream(30); // 30fps
+    multiviewVideo.srcObject = multiviewStream;
+    
+    // Start playing the video
+    multiviewVideo.play().catch(error => {
+      console.warn('Failed to play multiview video:', error);
+    });
+    
+    // Update video title for PiP
+    multiviewVideo.title = `StreamMESH: ${channels.length} streams`;
+    
+    console.log(`Updated multiview video with ${channels.length} streams`);
+    
+  } catch (error) {
+    console.warn('Failed to update multiview video:', error);
+  }
 }
 
 // Create the PiP window content
@@ -346,14 +474,14 @@ export async function openMultiViewPiP(channels, { parentHost, startIndex = 0 } 
   currentChannels = channels;
   focusedChannel = Math.max(0, Math.min(startIndex, channels.length - 1));
   
-  // Enable PiP for Twitch iframes on iOS
-  enablePiPForTwitchIframes();
+  // Update multiview video for iOS PiP
+  updateMultiviewVideo(channels, parentHost);
   
   try {
-    // On iOS, enable native PiP for all Twitch streams
+    // On iOS, show multiview video for PiP
     if (isIOS && supportsWebKitPiP) {
-      console.log('iOS PiP enabled - users can swipe up to home screen to activate PiP for any stream');
-      return { type: 'ios-native-pip', message: 'PiP enabled for all streams - swipe up to activate' };
+      console.log('iOS Multiview PiP ready - click the video or swipe up to activate');
+      return { type: 'ios-multiview-pip', message: 'Multiview PiP ready - click video or swipe up to activate' };
     }
     
     // Try Document PiP first
@@ -434,8 +562,8 @@ export function updatePiPChannels(channels) {
   if (channels) {
     currentChannels = channels;
     
-    // Enable PiP for new Twitch iframes on iOS
-    enablePiPForTwitchIframes();
+    // Update multiview video for iOS PiP
+    updateMultiviewVideo(channels, window.location.hostname);
     
     // Update existing PiP window if open
     if (pipWindow) {
