@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import Loader from "./Loader.jsx";
-import HelpModal from "./HelpModal.jsx";
-// Removed the overlaying GridPicker import to avoid UI overlap
-// import GridPicker from "./GridPicker.jsx";
+import { useState, useEffect, useMemo, useRef } from "react";
+import GridPicker from "./GridPicker";
+import HelpModal from "./HelpModal";
+import ShareLink from "./Sharelink";
+import Loader from "./Loader";
+import { openMultiViewPiP, closeMultiViewPiP, isPiPOpen, updatePiPChannels } from "./pip/multiview";
 
 /**
  * StreamMESH - Multi-Twitch Viewer (production-ready)
@@ -13,26 +14,62 @@ import HelpModal from "./HelpModal.jsx";
  * - Shareable URLs with full state encoding
  * - Keyboard shortcuts and accessibility
  * - Modern dark UI with purple accent
+ * - Picture-in-Picture mode for cycling through streams
+ * - Responsive layouts: Grid for desktop, Stacked for mobile
  */
 
-// Layouts (supports up to 3x3 now)
-const LAYOUTS = {
-  "1x1": { rows: 1, cols: 1, label: "1×1", minTiles: 1, maxTiles: 1 },
-  "2x1": { rows: 1, cols: 2, label: "2×1", minTiles: 2, maxTiles: 2 },
-  "3x1": { rows: 1, cols: 3, label: "3×1", minTiles: 3, maxTiles: 3 },
-  "1x2": { rows: 2, cols: 1, label: "1×2", minTiles: 2, maxTiles: 2 },
-  "2x2": { rows: 2, cols: 2, label: "2×2", minTiles: 2, maxTiles: 4 },
-  "3x2": { rows: 2, cols: 3, label: "3×2", minTiles: 2, maxTiles: 6 },
-  "2x3": { rows: 3, cols: 2, label: "2×3", minTiles: 2, maxTiles: 6 },
-  "3x3": { rows: 3, cols: 3, label: "3×3", minTiles: 2, maxTiles: 9 },
+// Responsive layouts - Desktop shows grid, Mobile shows stacked
+const DESKTOP_LAYOUTS = {
+  "1x1": { rows: 1, cols: 1, label: "1×1", minTiles: 1, maxTiles: 1, type: "grid" },
+  "2x1": { rows: 1, cols: 2, label: "2×1", minTiles: 2, maxTiles: 2, type: "grid" },
+  "3x1": { rows: 1, cols: 3, label: "3×1", minTiles: 3, maxTiles: 3, type: "grid" },
+  "1x2": { rows: 2, cols: 1, label: "1×2", minTiles: 2, maxTiles: 2, type: "grid" },
+  "2x2": { rows: 2, cols: 2, label: "2×2", minTiles: 2, maxTiles: 4, type: "grid" },
+  "3x2": { rows: 2, cols: 3, label: "3×2", minTiles: 2, maxTiles: 6, type: "grid" },
+  "2x3": { rows: 3, cols: 2, label: "2×3", minTiles: 2, maxTiles: 6, type: "grid" },
+  "3x3": { rows: 3, cols: 3, label: "3×3", minTiles: 2, maxTiles: 9, type: "grid" },
 };
-const getLayoutMeta = (key) => LAYOUTS[key] || LAYOUTS["2x1"];
+
+const MOBILE_LAYOUTS = {
+  "stacked": { rows: 1, cols: 1, label: "Stacked", minTiles: 1, maxTiles: 9, type: "stacked" },
+  "2stacked": { rows: 1, cols: 1, label: "2 Stacked", minTiles: 2, maxTiles: 2, type: "stacked" },
+  "3stacked": { rows: 1, cols: 1, label: "3 Stacked", minTiles: 3, maxTiles: 3, type: "stacked" },
+};
+
+// Hook to detect mobile vs desktop
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  return isMobile;
+}
+
+
+
+// Get appropriate layouts based on device
+function getLayouts(isMobile) {
+  return isMobile ? MOBILE_LAYOUTS : DESKTOP_LAYOUTS;
+}
+
+const getLayoutMeta = (key, isMobile) => {
+  const layouts = getLayouts(isMobile);
+  return layouts[key] || (isMobile ? layouts["stacked"] : layouts["2x1"]);
+};
 
 // ---------- helpers ----------
 const parseQuery = () => new URLSearchParams(window.location.search);
 
 export const encodeStateToURL = (state) => {
-  const meta = getLayoutMeta(state.layout);
+  const meta = getLayoutMeta(state.layout, false); // Use desktop for URL encoding
   const params = new URLSearchParams();
 
   params.set("layout", state.layout);
@@ -62,12 +99,17 @@ const DEFAULT_STATE = {
   tiles: Array.from({ length: 9 }, (_, i) => ({ id: i, channel: "", showChat: true })),
 };
 
+// Get default layout based on device
+function getDefaultLayout(isMobile) {
+  return isMobile ? "stacked" : "2x1";
+}
+
 function useRestoredState() {
   const [state, setState] = useState(() => {
     const q = parseQuery();
 
     const layout = q.get("layout") || DEFAULT_STATE.layout;
-    const meta = getLayoutMeta(layout);
+    const meta = getLayoutMeta(layout, false); // Use desktop for restoration
 
     // count: clamp to layout bounds; default to meta.minTiles
     const rawCount = Number(q.get("count"));
@@ -97,40 +139,28 @@ function useRestoredState() {
   return [state, setState];
 }
 
-function ShareLink({ appState }) {
-  const [copied, setCopied] = useState(false);
-  const url = useMemo(() => encodeStateToURL(appState), [appState]);
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        className="w-[260px] max-w-[60vw] px-3 py-2 rounded-lg border border-[#23272f] bg-white text-black text-sm"
-        readOnly
-        value={url}
-      />
-      <button
-        className="px-3 py-2 rounded-lg bg-[#7c3aed] text-white font-semibold hover:bg-[#a78bfa] transition"
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          } catch {
-            setCopied(false);
-          }
-        }}
-      >
-        {copied ? "Copied" : "Copy"}
-      </button>
-    </div>
-  );
+// Helper function to get visible channels for PiP
+function getVisibleChannels(appState, visibleCount) {
+  return appState.tiles
+    .slice(0, visibleCount)
+    .map(tile => ({
+      channel: tile.channel.trim(),
+      muted: false,
+      showChat: tile.showChat
+    }))
+    .filter(tile => tile.channel); // Only include channels with actual content
 }
 
+
+
 /** Compact layout selector (closed by default, shows current value) */
-function LayoutSelect({ layoutKey, onChange }) {
-  const entries = Object.entries(LAYOUTS);
+function LayoutSelect({ layoutKey, onChange, isMobile }) {
+  const layouts = getLayouts(isMobile);
+  const entries = Object.entries(layouts);
+  
   return (
     <label className="inline-flex items-center gap-2 text-xs text-white/70">
-      <span>Layout</span>
+      <span>{isMobile ? "View" : "Layout"}</span>
       <select
         className="bg-[#111319] border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
         value={layoutKey}
@@ -147,37 +177,56 @@ function LayoutSelect({ layoutKey, onChange }) {
 }
 
 export default function App() {
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = useState(true);
   const [appState, setAppState] = useRestoredState();
   const [helpOpen, setHelpOpen] = useState(false);
+  const isMobile = useIsMobile();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
   }, []);
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === "?" || e.key === "h" || e.key === "H") setHelpOpen((v) => !v);
-      if (e.key === "Escape") setHelpOpen(false);
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
+  // Calculate visible count first (needed by PiP functions)
   const parentDomain = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const meta = LAYOUTS[appState.layout] || LAYOUTS["2x1"];
+  const meta = getLayoutMeta(appState.layout, isMobile);
+  const visibleCount = useMemo(
+    () => Math.min(appState.activeCount, meta.maxTiles),
+    [appState.activeCount, meta.maxTiles]
+  );
+
+  // Expand to the layout's full capacity so every cell can accept input immediately
+  const setLayout = (layout) => {
+    const m = getLayoutMeta(layout, isMobile);
+    setAppState((s) => ({ ...s, layout, activeCount: m.maxTiles }));
+  };
+
+
+
+
 
   // Ensure activeCount within layout bounds
   useEffect(() => {
     setAppState((s) => {
-      const m = LAYOUTS[s.layout];
+      const m = getLayoutMeta(s.layout, isMobile);
       let next = s.activeCount;
       if (next < m.minTiles) next = m.minTiles;
       if (next > m.maxTiles) next = m.maxTiles;
       return { ...s, activeCount: next };
     });
-  }, [appState.layout]);
+  }, [appState.layout, isMobile]);
+
+  // Auto-switch to appropriate layout when device changes
+  useEffect(() => {
+    const currentMeta = getLayoutMeta(appState.layout, isMobile);
+    if (currentMeta.type === "stacked" && !isMobile) {
+      // Switch from mobile to desktop layout
+      setLayout("2x1");
+    } else if (currentMeta.type === "grid" && isMobile) {
+      // Switch from desktop to mobile layout
+      setLayout("stacked");
+    }
+  }, [isMobile]);
 
   const updateTile = (idx, patch) => {
     setAppState((s) => {
@@ -186,34 +235,134 @@ export default function App() {
     });
   };
 
-  // Expand to the layout’s full capacity so every cell can accept input immediately
-  const setLayout = (layout) => {
-    const m = LAYOUTS[layout];
-    setAppState((s) => ({ ...s, layout, activeCount: m.maxTiles }));
+  // Multiview PiP handler
+  const handleMultiviewPiP = async () => {
+    try {
+      const channels = getVisibleChannels(appState, visibleCount);
+      if (channels.length === 0) {
+        alert('No channels to display. Please add some Twitch channels first.');
+        return;
+      }
+      
+      // Check if we're on iOS and suggest app alternative
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS && !('documentPictureInPicture' in window)) {
+        const useApp = confirm(
+          'Document PiP is not supported on iOS Safari. Would you like to open the first channel in the Twitch app instead?'
+        );
+        if (useApp && channels[0]) {
+          window.open(`https://twitch.tv/${channels[0].channel}`, '_blank');
+          return;
+        }
+      }
+      
+      await openMultiViewPiP(channels, { 
+        parentHost: parentDomain,
+        startIndex: 0
+      });
+    } catch (error) {
+      console.error('Failed to open multiview PiP:', error);
+      alert('Failed to open multiview PiP. Please check console for details.');
+    }
   };
 
-  const visibleCount = React.useMemo(
-    () => Math.min(appState.activeCount, meta.maxTiles),
-    [appState.activeCount, meta.maxTiles]
-  );
+  // Listen for sync requests from PiP window
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data.type === 'SYNC_REQUEST') {
+        const channels = getVisibleChannels(appState, visibleCount);
+        updatePiPChannels(channels);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [appState, visibleCount]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeydown = (event) => {
+      // Ctrl/Cmd + M for Multiview PiP
+      if ((event.ctrlKey || event.metaKey) && event.key === 'm') {
+        event.preventDefault();
+        handleMultiviewPiP();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [appState, visibleCount]);
 
   if (loading) return <Loader />;
 
   return (
     <div className="min-h-screen w-full bg-[#0b0b0b] text-white flex flex-col">
       {/* Top bar (no overlay, no left-side badges) */}
-      <header className="sticky top-0 z-40 w-full bg-[#0b0b0b] border-b border-[#23272f] shadow flex items-center px-4 py-3">
-        <span className="text-lg font-bold select-none">
-          Stream<span className="text-[#7c3aed]">MESH</span>
-        </span>
-        <div className="flex-1" />
-        <div className="flex items-center gap-3">
-          <LayoutSelect layoutKey={appState.layout} onChange={setLayout} />
-          <span className="text-xs text-white/60">
-            Tiles: {visibleCount}/{meta.maxTiles}
-          </span>
-          <ShareLink appState={appState} />
-        </div>
+      <header className="sticky top-0 z-40 w-full bg-[#0b0b0b] border-b border-[#23272f] shadow">
+        {isMobile ? (
+          // Mobile: Beautiful stacked layout with modern styling
+          <div className="px-4 py-4 space-y-4 bg-gradient-to-b from-[#0b0b0b] to-[#151a23]">
+            {/* Top row: Logo and Layout Selector */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] rounded-lg flex items-center justify-center">
+                  <span className="text-white text-lg font-bold">S</span>
+                </div>
+                <span className="text-xl font-bold select-none">
+                  Stream<span className="text-[#7c3aed]">MESH</span>
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-white/40 bg-[#1a1a1a] px-2 py-1 rounded-lg">
+                  {visibleCount} streams
+                </span>
+                <LayoutSelect layoutKey={appState.layout} onChange={setLayout} isMobile={isMobile} />
+              </div>
+            </div>
+            
+            {/* Bottom row: Multiview PiP and Share buttons */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleMultiviewPiP}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  📺 Multiview PiP
+                </button>
+                <span className="text-sm text-white/60">Share this layout</span>
+              </div>
+              <ShareLink appState={appState} isMobile={isMobile} />
+            </div>
+          </div>
+        ) : (
+          // Desktop: Beautiful horizontal layout with modern styling
+          <div className="flex items-center px-6 py-4 bg-gradient-to-r from-[#0b0b0b] to-[#151a23]">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white text-xl font-bold">S</span>
+              </div>
+              <span className="text-2xl font-bold select-none">
+                Stream<span className="text-[#7c3aed]">MESH</span>
+              </span>
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center gap-4">
+              <LayoutSelect layoutKey={appState.layout} onChange={setLayout} isMobile={isMobile} />
+              <div className="bg-[#1a1a1a] px-3 py-2 rounded-xl border border-[#23272f]">
+                <span className="text-sm text-white/80 font-medium">
+                  {visibleCount}/{meta.maxTiles} tiles
+                </span>
+              </div>
+              <button
+                onClick={handleMultiviewPiP}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+              >
+                📺 Multiview PiP
+              </button>
+              <ShareLink appState={appState} isMobile={isMobile} />
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Grid - main is the only flex column parent */}
@@ -229,6 +378,7 @@ export default function App() {
             const el = document.getElementById(`tile-${idx}`);
             if (el?.requestFullscreen) el.requestFullscreen();
           }}
+          isMobile={isMobile}
         />
       </main>
 
@@ -251,16 +401,53 @@ export default function App() {
       >
         ?
       </button>
-      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} isMobile={isMobile} />
+      
+
     </div>
   );
 }
 
 // --- Grid ---
-function Grid({ layout, activeCount, tiles, parentDomain, onChangeChannel, onToggleChat, onFullscreen }) {
-  const meta = LAYOUTS[layout] || LAYOUTS["2x1"];
+function Grid({ layout, activeCount, tiles, parentDomain, onChangeChannel, onToggleChat, onFullscreen, isMobile }) {
+  const meta = getLayoutMeta(layout, isMobile);
+  const isStacked = meta.type === "stacked";
+  
+  if (isStacked) {
+    // Stacked layout for mobile - vertical scrolling
+    const cells = tiles.slice(0, activeCount);
+    
+    return (
+      <div className="flex flex-col gap-4 w-full h-full min-h-0 flex-1 overflow-y-auto">
+        {cells.map((tile, idx) => (
+          <StreamTile
+            key={tile.id}
+            tile={tile}
+            parentDomain={parentDomain}
+            idx={idx}
+            onChangeChannel={(v) => onChangeChannel(idx, v)}
+            onToggleChat={() => onToggleChat(idx)}
+            onFullscreen={() => {
+              const el = document.getElementById(`tile-${idx}`);
+              if (el?.requestFullscreen) el.requestFullscreen();
+            }}
+            isStacked={true}
+          />
+        ))}
+        {activeCount === 0 && (
+          <div className="rounded-2xl border border-dashed border-[#23272f] bg-[#151a23] flex flex-col items-center justify-center text-gray-500 text-sm py-12">
+            <span className="text-3xl mb-2">📺</span>
+            <span>Add some channels to get started</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Grid layout for desktop
   const totalCells = meta.rows * meta.cols;
   const cells = tiles.slice(0, activeCount);
+  
   const gridTiles = [...cells, ...Array.from({ length: totalCells - cells.length }, () => null)];
 
   return (
@@ -288,6 +475,8 @@ function Grid({ layout, activeCount, tiles, parentDomain, onChangeChannel, onTog
               const el = document.getElementById(`tile-${idx}`);
               if (el?.requestFullscreen) el.requestFullscreen();
             }}
+            isStacked={false}
+
           />
         ) : (
           <div
@@ -307,7 +496,7 @@ function Grid({ layout, activeCount, tiles, parentDomain, onChangeChannel, onTog
 }
 
 // --- StreamTile ---
-function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, onFullscreen }) {
+function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, onFullscreen, isStacked }) {
   const wrapRef = useRef(null);
   const channel = tile.channel.trim();
   const showPlayer = Boolean(channel);
@@ -341,8 +530,10 @@ function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, on
     <div
       ref={wrapRef}
       id={typeof idx === "number" ? `tile-${idx}` : undefined}
-      className="relative flex flex-col h-full min-h-0 bg-[#181c24] rounded-2xl overflow-hidden border border-[#23272f] shadow-lg group"
-      style={{ minHeight: 0, height: "100%" }}
+      className={`relative flex flex-col bg-[#181c24] rounded-2xl overflow-hidden border border-[#23272f] shadow-lg group ${
+        isStacked ? 'min-h-[300px]' : 'h-full min-h-0'
+      }`}
+      style={isStacked ? {} : { minHeight: 0, height: "100%" }}
     >
       {/* Overlay controls — always visible when channel is empty; on hover otherwise */}
       <div
@@ -385,16 +576,16 @@ function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, on
           <>
             <div className={`flex-1 min-w-0 min-h-0 ${tile.showChat ? "" : "w-full"}`}>
               <iframe
-                title={`player-${channel}`}
+                title={`Twitch stream for ${channel}`}
                 src={playerSrc}
-                allow="autoplay; fullscreen"
+                allow="autoplay; fullscreen; picture-in-picture"
                 allowFullScreen
                 className="w-full h-full"
                 style={{ display: "block" }}
               />
             </div>
             {tile.showChat && (
-              <div className="w-[320px] min-w-[220px] max-w-[40%] h-full bg-[#0e0e10] border-l border-[#23272f]">
+              <div className={`${isStacked ? 'w-full h-[200px] border-t' : 'w-[320px] min-w-[220px] max-w-[40%] h-full border-l'} bg-[#0e0e10] border-[#23272f]`}>
                 <iframe title={`chat-${channel}`} src={chatSrc} className="w-full h-full" style={{ display: "block" }} />
               </div>
             )}

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function HelpModal({ open, onClose }) {
+export default function HelpModal({ open, onClose, isMobile = false, piPSupported = false }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -27,6 +27,10 @@ export default function HelpModal({ open, onClose }) {
             <span className="kbd">C</span>
           </div>
           <div className="flex justify-between">
+            <span>Picture-in-Picture mode</span>
+            <span className="kbd">P</span>
+          </div>
+          <div className="flex justify-between">
             <span>Show this help</span>
             <span>
               <span className="kbd">?</span> / <span className="kbd">H</span>
@@ -35,6 +39,15 @@ export default function HelpModal({ open, onClose }) {
           <div className="flex justify-between">
             <span>Close modals</span>
             <span className="kbd">ESC</span>
+          </div>
+        </div>
+        <hr className="my-4 border-white/10" />
+        <div className="text-xs text-white/50 mb-4">
+          <div className="font-semibold mb-2">PiP Window Controls:</div>
+          <div className="space-y-1">
+            <div>• <span className="kbd">←</span> - Previous stream</div>
+            <div>• <span className="kbd">→</span> or <span className="kbd">Space</span> - Next stream</div>
+            <div>• <span className="kbd">ESC</span> - Close PiP window</div>
           </div>
         </div>
         <hr className="my-4 border-white/10" />

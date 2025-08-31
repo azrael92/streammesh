@@ -2,10 +2,33 @@
 
 **What this is:** A browser-only React app that lets you watch and chat across multiple Twitch streams, with a shareable mini-URL.
 
-- Layouts: 2×1, 1×2, 2×2
+- Layouts: 1×1, 2×1, 3×1, 1×2, 2×2, 3×2, 2×3, 3×3
 - Toggle chat per tile, fullscreen any tile
+- Picture-in-Picture mode for cycling through streams
 - URL encodes layout + channels + chat toggles (copy link to share)
 - No server required
+
+## Features
+
+### Multi-Stream Grid
+- Support for up to 9 streams (3×3 layout)
+- Drag-and-drop tile reordering
+- Per-tile chat toggle, fullscreen, and volume controls
+- Keyboard navigation and shortcuts
+
+### Picture-in-Picture Mode
+- **PiP All Streams** button opens a floating window
+- Cycle through all active streams with Next/Previous buttons
+- Keyboard shortcuts: `←` (previous), `→` or `Space` (next), `ESC` (close)
+- Automatic stream cycling through your active channels
+- Works with any layout configuration
+
+### Keyboard Shortcuts
+- `P` - Toggle Picture-in-Picture mode
+- `?` or `H` - Show help modal
+- `ESC` - Close modals and PiP windows
+- `1-9` - Focus specific tiles
+- `C` - Toggle chat on focused tile
 
 ## Local Dev
 
@@ -15,6 +38,14 @@ npm run dev
 ```
 
 Open the printed URL (e.g. blahblah.com). The app auto-sets Twitch's `parent` param to your current domain/host.
+
+## Browser Support
+
+- **Picture-in-Picture**: Chrome 108+, Edge 108+, Opera 94+
+- **General features**: All modern browsers
+- **Note**: PiP mode requires user interaction and may not work in all browsers
+- **Browser Detection**: The app automatically detects PiP support and only shows the feature for compatible browsers
+- **Fallback**: App works perfectly without PiP - all core multi-stream functionality is available in all browsers
 
 ## Build
 
