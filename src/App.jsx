@@ -3,9 +3,9 @@ import GridPicker from "./GridPicker";
 import HelpModal from "./HelpModal";
 import ShareLink from "./Sharelink";
 import Loader from "./Loader";
-import { initCycling, updateChannels } from "./pip/cyclingPiP";
-import { openDesktopPiP, closePiP, isDesktopPiPOpen } from "./pip/DesktopPiP";
+import OverlayPiP from "./pip/OverlayPiP";
 import MobilePiP from "./pip/MobilePiP";
+import { getTopStreams } from "./topStreams";
 
 /**
  * StreamMESH - Multi-Twitch Viewer (production-ready)
@@ -183,11 +183,29 @@ export default function App() {
   const [appState, setAppState] = useRestoredState();
   const [helpOpen, setHelpOpen] = useState(false);
   const isMobile = useIsMobile();
-  const [mobilePiPOpen, setMobilePiPOpen] = useState(false);
+  const [pipOpen, setPipOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
+  }, []);
+
+  // Auto-load top streams if no channels configured (first visit, no URL params)
+  useEffect(() => {
+    const hasStreams = appState.tiles.some((t) => t.channel.trim());
+    const hasUrlParams = window.location.search.includes('streams');
+    if (hasStreams || hasUrlParams) return;
+
+    getTopStreams(2).then((channels) => {
+      setAppState((s) => {
+        const tiles = s.tiles.map((t, i) => ({
+          ...t,
+          channel: channels[i] || t.channel,
+          showChat: false,
+        }));
+        return { ...s, layout: '1x2', activeCount: 2, tiles };
+      });
+    });
   }, []);
 
   // Calculate visible count first (needed by PiP functions)
@@ -238,30 +256,12 @@ export default function App() {
     });
   };
 
-  // PiP handler
-  const handlePiP = async () => {
+  // PiP handler — desktop: in-page overlay, mobile: OS-level or fallback
+  const handlePiP = () => {
     const channels = getVisibleChannels(appState, visibleCount);
     if (channels.length === 0) return;
-
-    if (isMobile) {
-      setMobilePiPOpen((prev) => !prev);
-    } else {
-      try {
-        initCycling(channels, parentDomain);
-        await openDesktopPiP();
-      } catch (error) {
-        console.error('Failed to open PiP:', error);
-      }
-    }
+    setPipOpen((prev) => !prev);
   };
-
-  // Keep PiP in sync when streams change
-  useEffect(() => {
-    if (isDesktopPiPOpen()) {
-      const channels = getVisibleChannels(appState, visibleCount);
-      updateChannels(channels);
-    }
-  }, [appState, visibleCount]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function App() {
                   onClick={handlePiP}
                   className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                 >
-                  {mobilePiPOpen ? '✕ Close Mini' : '📺 Mini Player'}
+                  {pipOpen ? '✕ Close PiP' : '📺 Mini Player'}
                 </button>
                 <span className="text-sm text-white/60">Share this layout</span>
               </div>
@@ -347,7 +347,7 @@ export default function App() {
                 onClick={handlePiP}
                 className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
               >
-                📺 PiP Player
+                {pipOpen ? '✕ Close PiP' : '📺 PiP Player'}
               </button>
               <ShareLink appState={appState} isMobile={isMobile} />
             </div>
@@ -393,11 +393,18 @@ export default function App() {
       </button>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} isMobile={isMobile} />
 
-      {mobilePiPOpen && isMobile && (
+      {pipOpen && !isMobile && (
+        <OverlayPiP
+          channels={getVisibleChannels(appState, visibleCount)}
+          parentHost={parentDomain}
+          onClose={() => setPipOpen(false)}
+        />
+      )}
+      {pipOpen && isMobile && (
         <MobilePiP
           channels={getVisibleChannels(appState, visibleCount)}
           parentHost={parentDomain}
-          onClose={() => setMobilePiPOpen(false)}
+          onClose={() => setPipOpen(false)}
         />
       )}
     </div>
