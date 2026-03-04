@@ -3,7 +3,9 @@ import GridPicker from "./GridPicker";
 import HelpModal from "./HelpModal";
 import ShareLink from "./Sharelink";
 import Loader from "./Loader";
-import { openMultiViewPiP, closeMultiViewPiP, isPiPOpen, updatePiPChannels, initializePiP } from "./pip/multiview";
+import { initCycling, updateChannels } from "./pip/cyclingPiP";
+import { openDesktopPiP, closePiP, isDesktopPiPOpen } from "./pip/DesktopPiP";
+import MobilePiP from "./pip/MobilePiP";
 
 /**
  * StreamMESH - Multi-Twitch Viewer (production-ready)
@@ -181,18 +183,11 @@ export default function App() {
   const [appState, setAppState] = useRestoredState();
   const [helpOpen, setHelpOpen] = useState(false);
   const isMobile = useIsMobile();
-  const [pipSupport, setPipSupport] = useState(null);
+  const [mobilePiPOpen, setMobilePiPOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
-  }, []);
-
-  // Initialize PiP support
-  useEffect(() => {
-    const support = initializePiP();
-    setPipSupport(support);
-    console.log('PiP Support:', support);
   }, []);
 
   // Calculate visible count first (needed by PiP functions)
@@ -243,53 +238,50 @@ export default function App() {
     });
   };
 
-  // Multiview PiP handler
-  const handleMultiviewPiP = async () => {
-    try {
-      const channels = getVisibleChannels(appState, visibleCount);
-      if (channels.length === 0) {
-        console.log('No channels to display for PiP');
-        return;
+  // PiP handler
+  const handlePiP = async () => {
+    const channels = getVisibleChannels(appState, visibleCount);
+    if (channels.length === 0) return;
+
+    if (isMobile) {
+      setMobilePiPOpen((prev) => !prev);
+    } else {
+      try {
+        initCycling(channels, parentDomain);
+        await openDesktopPiP();
+      } catch (error) {
+        console.error('Failed to open PiP:', error);
       }
-      
-      const result = await openMultiViewPiP(channels, { 
-        parentHost: parentDomain,
-        startIndex: 0
-      });
-      
-      // No alerts - just let the feature work silently
-    } catch (error) {
-      console.error('Failed to open multiview PiP:', error);
-      // No alerts - just log to console
     }
   };
 
-  // Listen for sync requests from PiP window
+  // Keep PiP in sync when streams change
   useEffect(() => {
-    const handleMessage = (event) => {
-      if (event.data.type === 'SYNC_REQUEST') {
-        const channels = getVisibleChannels(appState, visibleCount);
-        updatePiPChannels(channels);
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    if (isDesktopPiPOpen()) {
+      const channels = getVisibleChannels(appState, visibleCount);
+      updateChannels(channels);
+    }
   }, [appState, visibleCount]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeydown = (event) => {
-      // Ctrl/Cmd + M for Multiview PiP
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+
+      // P or Ctrl/Cmd+M to toggle PiP
+      if (event.key === 'p' || event.key === 'P') {
+        event.preventDefault();
+        handlePiP();
+      }
       if ((event.ctrlKey || event.metaKey) && event.key === 'm') {
         event.preventDefault();
-        handleMultiviewPiP();
+        handlePiP();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [appState, visibleCount]);
+  }, [appState, visibleCount, isMobile]);
 
   if (loading) return <Loader />;
 
@@ -322,10 +314,10 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={handleMultiviewPiP}
+                  onClick={handlePiP}
                   className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                 >
-                  {pipSupport?.isIOS ? '📱 Enable PiP' : '📺 Multiview PiP'}
+                  {mobilePiPOpen ? '✕ Close Mini' : '📺 Mini Player'}
                 </button>
                 <span className="text-sm text-white/60">Share this layout</span>
               </div>
@@ -352,10 +344,10 @@ export default function App() {
                 </span>
               </div>
               <button
-                onClick={handleMultiviewPiP}
+                onClick={handlePiP}
                 className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
               >
-                {pipSupport?.isIOS ? '📱 Enable PiP' : '📺 Multiview PiP'}
+                📺 PiP Player
               </button>
               <ShareLink appState={appState} isMobile={isMobile} />
             </div>
@@ -400,8 +392,14 @@ export default function App() {
         ?
       </button>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} isMobile={isMobile} />
-      
 
+      {mobilePiPOpen && isMobile && (
+        <MobilePiP
+          channels={getVisibleChannels(appState, visibleCount)}
+          parentHost={parentDomain}
+          onClose={() => setMobilePiPOpen(false)}
+        />
+      )}
     </div>
   );
 }
