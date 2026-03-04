@@ -1,80 +1,73 @@
-# StreamMESH — multi-stream Twitch viewer
+# StreamMESH
 
-**What this is:** A browser-only React app that lets you watch and chat across multiple Twitch streams, with a shareable mini-URL.
+A browser-only multi-stream Twitch viewer. Watch up to 9 streams at once, toggle chat per tile, share your layout via URL — no backend needed.
 
-- Layouts: 1×1, 2×1, 3×1, 1×2, 2×2, 3×2, 2×3, 3×3
-- Toggle chat per tile, fullscreen any tile
-- Picture-in-Picture mode for cycling through streams
-- URL encodes layout + channels + chat toggles (copy link to share)
-- No server required
+## What it does
 
-## Features
+- **Grid layouts** from 1x1 up to 3x3 (9 simultaneous streams)
+- **Per-tile controls** — toggle chat, fullscreen, volume, drag-and-drop reorder
+- **Picture-in-Picture** — floating window that cycles through your active streams with keyboard nav
+- **Shareable links** — URL encodes your layout, channels, and chat visibility so you can send it to anyone
+- **No server** — runs entirely in the browser using Twitch's public embed API
 
-### Multi-Stream Grid
-- Support for up to 9 streams (3×3 layout)
-- Drag-and-drop tile reordering
-- Per-tile chat toggle, fullscreen, and volume controls
-- Keyboard navigation and shortcuts
+## Tech stack
 
-### Picture-in-Picture Mode
-- **PiP All Streams** button opens a floating window
-- Cycle through all active streams with Next/Previous buttons
-- Keyboard shortcuts: `←` (previous), `→` or `Space` (next), `ESC` (close)
-- Automatic stream cycling through your active channels
-- Works with any layout configuration
+| Layer | Tools |
+|-------|-------|
+| UI | React 18, Tailwind CSS |
+| Build | Vite 5 |
+| Streaming | Twitch Embedded Player + Chat iframes |
+| PiP | Document Picture-in-Picture API, WebKit PiP (iOS), Canvas fallback |
 
-### Keyboard Shortcuts
-- `P` - Toggle Picture-in-Picture mode
-- `?` or `H` - Show help modal
-- `ESC` - Close modals and PiP windows
-- `1-9` - Focus specific tiles
-- `C` - Toggle chat on focused tile
+## How it works
 
-## Local Dev
+Each stream tile is a Twitch embed iframe. The app reads `window.location.hostname` and passes it as the `parent` param that Twitch requires — so it works on localhost, Vercel, Cloudflare Pages, or any custom domain without config.
+
+Layouts and channels are encoded in the URL query string:
+
+```
+?layout=3x2&streams=pokimane,valkyrae,sykkuno&count=3&chat=111000000
+```
+
+The `chat` param is a 9-bit bitmask — each bit controls whether chat is visible on that tile.
+
+Picture-in-Picture uses the Document PiP API (Chrome 108+) with a canvas-based fallback for iOS that renders animated frames into a video element for WebKit's native PiP.
+
+## Getting started
 
 ```bash
+git clone https://github.com/azrael92/streammesh.git
+cd streammesh
 npm install
 npm run dev
 ```
 
-Open the printed URL (e.g. blahblah.com). The app auto-sets Twitch's `parent` param to your current domain/host.
+Open the printed URL. Twitch embeds auto-detect your hostname.
 
-## Browser Support
-
-- **Picture-in-Picture**: Chrome 108+, Edge 108+, Opera 94+
-- **General features**: All modern browsers
-- **Note**: PiP mode requires user interaction and may not work in all browsers
-- **Browser Detection**: The app automatically detects PiP support and only shows the feature for compatible browsers
-- **Fallback**: App works perfectly without PiP - all core multi-stream functionality is available in all browsers
-
-## Build
+## Production build
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Deploy Options
+Output goes to `dist/`. Deploy to Vercel, Netlify, Cloudflare Pages, or any static host — just point the build command at `vite build` and the output directory at `dist`.
 
-### A) Vercel (simplest, no Actions needed)
-1. Push this repo to GitHub.
-2. In https://vercel.com, **Add New Project** → Import your repo.
-3. Framework: **Vite**. Build: `npm run build`, Output: `dist/`.
-4. Deploy. The app will work on the vercel.app domain automatically.
+## Keyboard shortcuts
 
-### B) Netlify (with GitHub Actions)
-- Create a site in Netlify from your GitHub repo.
-- Add repo secrets: `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID`.
-- Push to `main` to auto-deploy via `.github/workflows/netlify.yml`.
+| Key | Action |
+|-----|--------|
+| `P` | Toggle Picture-in-Picture |
+| `?` / `H` | Help modal |
+| `1`–`9` | Focus a specific tile |
+| `C` | Toggle chat on focused tile |
+| `ESC` | Close modals / PiP |
+| Arrow keys / Space | Navigate streams in PiP |
 
-### C) Vercel via GitHub Actions (optional)
-- Add repo secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
-- Push to `main` to auto-deploy via `.github/workflows/vercel.yml`.
+## Browser support
 
-## Twitch Embed Note
-Twitch requires a `parent` URL param matching your domain. This app uses `window.location.hostname`, so it should just work locally and on your hosted domain.
+PiP requires Chrome 108+, Edge 108+, or Opera 94+. Everything else works in all modern browsers. The app detects PiP support and hides the button if it's unavailable.
 
-## Shareable Links
-After entering channels and selecting layout, use the **Copy** button to get a URL that restores everything.
+## License
 
-
+MIT

@@ -1,6 +1,7 @@
 {
-  "name": "StreamMESH",
-  "version": "0.0.1",
+  "name": "streammesh",
+  "version": "1.0.0",
+  "description": "Browser-only multi-stream Twitch viewer with shareable layouts, per-tile chat, and Picture-in-Picture mode.",
   "private": true,
   "type": "module",
   "scripts": {
