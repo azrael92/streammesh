@@ -1,6 +1,6 @@
 # StreamMESH
 
-A browser-only multi-stream Twitch viewer. Watch up to 9 streams at once, toggle chat per tile, share your layout via URL — no backend needed.
+A browser-only multi-stream Twitch viewer. Watch up to 9 streams at once, toggle chat per tile, share your layout via URL — no backend needed. Check it out at https://www.streammesh.io
 
 ## What it does
 
