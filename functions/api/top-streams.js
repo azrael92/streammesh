@@ -40,7 +40,7 @@ export async function onRequest(context) {
       },
       body: JSON.stringify({
         query: `{
-          streams(first: 40, options: {sort: VIEWER_COUNT}) {
+          streams(first: 30, options: {sort: VIEWER_COUNT}) {
             edges {
               node {
                 broadcaster { login displayName }
