@@ -1,14 +1,35 @@
 # StreamMESH
 
-A browser-only multi-stream Twitch viewer. Watch up to 9 streams at once, toggle chat per tile, share your layout via URL — no backend needed. Check it out at https://www.streammesh.io
+Multi-view streaming, the way it should work. Live at [streammesh.io](https://www.streammesh.io).
 
-## What it does
+## The problem
+
+You want to watch a gaming tournament and follow three players at once. Or catch a Twitch stream while a Premier League match runs in the corner. Or have a muted YouTube recipe up next to whatever you're actually watching. None of this works today because every streaming service is a walled garden, and no single app lets you combine content across them.
+
+Twitch barely supports multi-view on its own platform. Throw YouTube into the mix and you're already stuck juggling tabs. Add a streaming service like ESPN+ or Netflix and it's completely off the table.
+
+## What StreamMESH is building toward
+
+The long-term vision is a single app where you sign in once and build a multi-view from any combination of services: Twitch, YouTube, Netflix, ESPN+, whatever you subscribe to. You choose what goes in each tile. If you want a Twitch streamer next to a live match next to a muted cooking video, that's your call.
+
+Getting there means solving two things:
+1. **Data rights** — brokering the agreements that let content from different services appear side by side in one player
+2. **Authentication** — a single sign-in layer that connects your accounts across services so you don't have to manage logins per tile
+
+Until the industry builds this into the TV operating system itself (letting you multiview across apps natively), there's room for a standalone product that handles the cross-service layer.
+
+## Where it stands today
+
+StreamMESH currently supports Twitch multi-view as the starting point. The primary use case is esports and gaming — tournaments where viewers want multiple POVs running simultaneously, which Twitch doesn't handle well on its own.
+
+### Current features
 
 - **Grid layouts** from 1x1 up to 3x3 (9 simultaneous streams)
-- **Per-tile controls** — toggle chat, fullscreen, volume, drag-and-drop reorder
-- **Picture-in-Picture** — floating window that cycles through your active streams with keyboard nav
-- **Shareable links** — URL encodes your layout, channels, and chat visibility so you can send it to anyone
-- **No server** — runs entirely in the browser using Twitch's public embed API
+- **Per-tile controls** — toggle chat, fullscreen individual streams, drag-and-drop reorder
+- **Picture-in-Picture** — floating window that cycles through active streams, persists across tabs
+- **Shareable links** — URL encodes your layout, channels, and chat visibility so you can send your setup to anyone
+- **Auto-load** — new visitors see top live Twitch streams immediately, no setup required
+- **Mobile and desktop** — responsive layouts with stacked mobile view and grid desktop view
 
 ## Tech stack
 
@@ -16,12 +37,14 @@ A browser-only multi-stream Twitch viewer. Watch up to 9 streams at once, toggle
 |-------|-------|
 | UI | React 18, Tailwind CSS |
 | Build | Vite 5 |
+| Hosting | Cloudflare Pages + Pages Functions |
 | Streaming | Twitch Embedded Player + Chat iframes |
-| PiP | Document Picture-in-Picture API, WebKit PiP (iOS), Canvas fallback |
+| PiP | Document Picture-in-Picture API with popup fallback |
+| Live data | Twitch GQL API (server-side via Cloudflare Functions) |
 
 ## How it works
 
-Each stream tile is a Twitch embed iframe. The app reads `window.location.hostname` and passes it as the `parent` param that Twitch requires — so it works on localhost, Vercel, Cloudflare Pages, or any custom domain without config.
+Each stream tile is a Twitch embed iframe. The app reads `window.location.hostname` and passes it as the `parent` param that Twitch requires, so it works on localhost or any custom domain without config.
 
 Layouts and channels are encoded in the URL query string:
 
@@ -29,9 +52,9 @@ Layouts and channels are encoded in the URL query string:
 ?layout=3x2&streams=pokimane,valkyrae,sykkuno&count=3&chat=111000000
 ```
 
-The `chat` param is a 9-bit bitmask — each bit controls whether chat is visible on that tile.
+The `chat` param is a 9-bit bitmask controlling chat visibility per tile.
 
-Picture-in-Picture uses the Document PiP API (Chrome 108+) with a canvas-based fallback for iOS that renders animated frames into a video element for WebKit's native PiP.
+On first visit (no URL params), a Cloudflare Pages Function calls Twitch's GQL API server-side to fetch the highest-viewership live streams and auto-populates the grid.
 
 ## Getting started
 
@@ -51,7 +74,7 @@ npm run build
 npm run preview
 ```
 
-Output goes to `dist/`. Deploy to Vercel, Netlify, Cloudflare Pages, or any static host — just point the build command at `vite build` and the output directory at `dist`.
+Output goes to `dist/`. Deployed on Cloudflare Pages — push to `main` triggers auto-deploy. The `functions/` directory contains the Pages Functions for the top streams API.
 
 ## Keyboard shortcuts
 
@@ -59,14 +82,10 @@ Output goes to `dist/`. Deploy to Vercel, Netlify, Cloudflare Pages, or any stat
 |-----|--------|
 | `P` | Toggle Picture-in-Picture |
 | `?` / `H` | Help modal |
-| `1`–`9` | Focus a specific tile |
+| `1`-`9` | Focus a specific tile |
 | `C` | Toggle chat on focused tile |
 | `ESC` | Close modals / PiP |
 | Arrow keys / Space | Navigate streams in PiP |
-
-## Browser support
-
-PiP requires Chrome 108+, Edge 108+, or Opera 94+. Everything else works in all modern browsers. The app detects PiP support and hides the button if it's unavailable.
 
 ## License
 
