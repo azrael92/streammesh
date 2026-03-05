@@ -204,7 +204,10 @@ export default function App() {
           channel: channels[i] || t.channel,
           showChat: false,
         }));
-        return { ...s, layout: '1x2', activeCount: channels.length, tiles };
+        const newState = { ...s, layout: '1x2', activeCount: channels.length, tiles };
+        // Push channels into the URL so the page loads them on render
+        try { window.history.replaceState(null, '', encodeStateToURL(newState)); } catch {}
+        return newState;
       });
     });
   }, []);
