@@ -12,9 +12,7 @@ const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko'; // Twitch web app pub
 const NSFW_CATEGORIES = new Set([
   'Pools, Hot Tubs, and Beaches',
   'ASMR',
-  'Just Chatting', // often borderline, skip for auto-load
   'I\'m Only Sleeping',
-  'Art',
 ]);
 
 export async function onRequest(context) {
