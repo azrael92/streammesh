@@ -3,8 +3,8 @@ import GridPicker from "./GridPicker";
 import HelpModal from "./HelpModal";
 import ShareLink from "./Sharelink";
 import Loader from "./Loader";
-import OverlayPiP from "./pip/OverlayPiP";
-import MobilePiP from "./pip/MobilePiP";
+import { openDesktopPiP, closeDesktopPiP } from "./pip/OverlayPiP";
+import { openMobilePiP, closeMobilePiP } from "./pip/MobilePiP";
 import { getTopStreams } from "./topStreams";
 
 /**
@@ -197,13 +197,14 @@ export default function App() {
     if (hasStreams || hasUrlParams) return;
 
     getTopStreams(2).then((channels) => {
+      if (!channels || channels.length === 0) return;
       setAppState((s) => {
         const tiles = s.tiles.map((t, i) => ({
           ...t,
           channel: channels[i] || t.channel,
           showChat: false,
         }));
-        return { ...s, layout: '1x2', activeCount: 2, tiles };
+        return { ...s, layout: '1x2', activeCount: channels.length, tiles };
       });
     });
   }, []);
@@ -256,11 +257,28 @@ export default function App() {
     });
   };
 
-  // PiP handler — desktop: in-page overlay, mobile: OS-level or fallback
-  const handlePiP = () => {
+  // PiP handler — opens window directly from click (user gesture required)
+  const handlePiP = async () => {
     const channels = getVisibleChannels(appState, visibleCount);
+
+    if (pipOpen) {
+      // Close whichever PiP is open
+      closeDesktopPiP();
+      closeMobilePiP();
+      setPipOpen(false);
+      return;
+    }
+
     if (channels.length === 0) return;
-    setPipOpen((prev) => !prev);
+
+    const onClose = () => setPipOpen(false);
+
+    if (isMobile) {
+      openMobilePiP(channels, parentDomain, onClose);
+    } else {
+      await openDesktopPiP(channels, parentDomain, onClose);
+    }
+    setPipOpen(true);
   };
 
   // Keyboard shortcuts
@@ -393,20 +411,6 @@ export default function App() {
       </button>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} isMobile={isMobile} />
 
-      {pipOpen && !isMobile && (
-        <OverlayPiP
-          channels={getVisibleChannels(appState, visibleCount)}
-          parentHost={parentDomain}
-          onClose={() => setPipOpen(false)}
-        />
-      )}
-      {pipOpen && isMobile && (
-        <MobilePiP
-          channels={getVisibleChannels(appState, visibleCount)}
-          parentHost={parentDomain}
-          onClose={() => setPipOpen(false)}
-        />
-      )}
     </div>
   );
 }

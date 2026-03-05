@@ -1,14 +1,14 @@
 /**
- * OverlayPiP.jsx — Desktop PiP using Document PiP API
+ * OverlayPiP.js — Desktop PiP as a plain function
  *
- * Opens a real floating window (via documentPictureInPicture API)
- * that stays visible across tabs and above other windows.
- * Shows a compact video-only grid of all active streams.
+ * Must be called directly from a click handler (user gesture required
+ * for documentPictureInPicture.requestWindow and window.open).
  *
- * Falls back to window.open() popup on browsers without Document PiP.
+ * Shows a compact video-only grid of all active streams in a floating
+ * window that persists above other tabs/apps.
  */
 
-import { useEffect, useRef } from 'react';
+let pipWin = null;
 
 function calculateGrid(count) {
   if (count <= 1) return { cols: 1, rows: 1 };
@@ -57,71 +57,62 @@ document.addEventListener('keydown',(e)=>{if(e.key==='Escape')window.close()});
 </body></html>`;
 }
 
-export default function OverlayPiP({ channels, parentHost, onClose }) {
-  const winRef = useRef(null);
+/**
+ * Open the desktop PiP window. Call directly from a click handler.
+ * Returns a promise (Document PiP is async).
+ */
+export async function openDesktopPiP(channels, parentHost, onClose) {
+  // Close any existing PiP first
+  closeDesktopPiP();
 
-  useEffect(() => {
-    let cancelled = false;
+  const html = buildHTML(channels, parentHost);
+  const count = channels.length;
+  const grid = calculateGrid(count);
+  const w = Math.min(grid.cols * 320, 960);
+  const h = Math.min(grid.rows * 200 + 32, 632);
 
-    async function openPiP() {
-      const html = buildHTML(channels, parentHost);
-      const count = channels.length;
-      const grid = calculateGrid(count);
-      const w = Math.min(grid.cols * 320, 960);
-      const h = Math.min(grid.rows * 200 + 32, 632);
+  // Try Document PiP API first (Chrome/Edge 116+)
+  if ('documentPictureInPicture' in window) {
+    try {
+      pipWin = await window.documentPictureInPicture.requestWindow({
+        width: w,
+        height: h,
+      });
+      pipWin.document.write(html);
+      pipWin.document.close();
 
-      let pipWin = null;
-
-      // Try Document PiP API first (Chrome/Edge 116+)
-      if ('documentPictureInPicture' in window) {
-        try {
-          pipWin = await window.documentPictureInPicture.requestWindow({
-            width: w,
-            height: h,
-          });
-          pipWin.document.write(html);
-          pipWin.document.close();
-
-          pipWin.addEventListener('pagehide', () => {
-            winRef.current = null;
-            if (!cancelled) onClose();
-          });
-        } catch (err) {
-          console.warn('Document PiP failed, trying popup:', err);
-          pipWin = null;
-        }
-      }
-
-      // Fallback: popup window
-      if (!pipWin) {
-        pipWin = window.open(
-          '', 'streammesh_pip',
-          `width=${w},height=${h},resizable=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no`
-        );
-        if (pipWin) {
-          pipWin.document.write(html);
-          pipWin.document.close();
-          pipWin.addEventListener('beforeunload', () => {
-            winRef.current = null;
-            if (!cancelled) onClose();
-          });
-        }
-      }
-
-      winRef.current = pipWin;
+      pipWin.addEventListener('pagehide', () => {
+        pipWin = null;
+        if (onClose) onClose();
+      });
+      return;
+    } catch (err) {
+      console.warn('Document PiP failed, trying popup:', err);
+      pipWin = null;
     }
+  }
 
-    openPiP();
+  // Fallback: popup window
+  pipWin = window.open(
+    '', 'streammesh_pip',
+    `width=${w},height=${h},resizable=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no`
+  );
+  if (pipWin) {
+    pipWin.document.write(html);
+    pipWin.document.close();
+    pipWin.addEventListener('beforeunload', () => {
+      pipWin = null;
+      if (onClose) onClose();
+    });
+  }
+}
 
-    return () => {
-      cancelled = true;
-      if (winRef.current) {
-        try { winRef.current.close(); } catch {}
-        winRef.current = null;
-      }
-    };
-  }, []); // Only open once on mount
-
-  // Render nothing in-page — the PiP is a separate window
-  return null;
+/**
+ * Close the desktop PiP window if open.
+ */
+export function closeDesktopPiP() {
+  if (pipWin) {
+    try { pipWin.close(); } catch {}
+    pipWin = null;
+  }
 }

@@ -1,14 +1,13 @@
 /**
- * MobilePiP.jsx — Mobile PiP using Document PiP API
+ * MobilePiP.js — Mobile PiP as a plain function
  *
- * Opens a real floating OS window (via documentPictureInPicture API)
- * that persists above other apps/tabs. Shows one stream at a time
- * with prev/next cycling.
+ * Must be called directly from a click handler (user gesture required
+ * for documentPictureInPicture.requestWindow and window.open).
  *
- * Falls back to window.open() popup on browsers without Document PiP.
+ * Opens a small floating window with one stream at a time and
+ * prev/next cycling through all active streams.
  */
 
-import { useEffect, useRef } from 'react';
 import {
   nextStream,
   prevStream,
@@ -20,6 +19,9 @@ import {
   initCycling,
   destroyCycling,
 } from './cyclingPiP.js';
+
+let pipWin = null;
+let unsub = null;
 
 function buildHTML(channel, url, index, total) {
   return `<!DOCTYPE html><html><head>
@@ -70,84 +72,83 @@ function subscribeToChanges(win) {
   });
 }
 
-export default function MobilePiP({ channels, parentHost, onClose }) {
-  const winRef = useRef(null);
+/**
+ * Open the mobile PiP window. Call directly from a click handler.
+ */
+export function openMobilePiP(channels, parentHost, onClose) {
+  // Close any existing PiP first
+  closeMobilePiP();
 
-  useEffect(() => {
-    let cancelled = false;
-    let unsub = null;
+  initCycling(channels, parentHost);
 
-    initCycling(channels, parentHost);
+  const channel = getCurrentChannel();
+  const url = buildCurrentStreamUrl();
+  const index = getCurrentIndex();
+  const total = getChannelCount();
+  const html = buildHTML(channel, url, index, total);
 
-    const channel = getCurrentChannel();
-    const url = buildCurrentStreamUrl();
-    const index = getCurrentIndex();
-    const total = getChannelCount();
-    const html = buildHTML(channel, url, index, total);
+  function cleanup() {
+    if (unsub) { unsub(); unsub = null; }
+    destroyCycling();
+    pipWin = null;
+    if (onClose) onClose();
+  }
 
-    function cleanup() {
-      if (unsub) unsub();
-      destroyCycling();
-      winRef.current = null;
-      if (!cancelled) onClose();
+  // Try Document PiP API (Android Chrome, desktop Chrome/Edge)
+  if ('documentPictureInPicture' in window) {
+    try {
+      // requestWindow returns a promise, but since we're already in
+      // the synchronous click handler the browser trusts the gesture.
+      // We handle it with .then() to avoid blocking.
+      window.documentPictureInPicture.requestWindow({
+        width: 320,
+        height: 220,
+      }).then((win) => {
+        pipWin = win;
+        win.document.write(html);
+        win.document.close();
+        wireControls(win.document, () => win.close());
+        unsub = subscribeToChanges(win);
+        win.addEventListener('pagehide', cleanup);
+      }).catch((err) => {
+        console.warn('Document PiP failed, trying popup:', err);
+        openPopupFallback(html, cleanup);
+      });
+      return;
+    } catch (err) {
+      console.warn('Document PiP threw sync error:', err);
     }
+  }
 
-    async function openPiP() {
-      let pipWin = null;
+  // Fallback: popup window
+  openPopupFallback(html, cleanup);
+}
 
-      // Try Document PiP API (Android Chrome, desktop Chrome/Edge)
-      if ('documentPictureInPicture' in window) {
-        try {
-          pipWin = await window.documentPictureInPicture.requestWindow({
-            width: 320,
-            height: 220,
-          });
-          pipWin.document.write(html);
-          pipWin.document.close();
-          wireControls(pipWin.document, () => pipWin.close());
-          unsub = subscribeToChanges(pipWin);
-          pipWin.addEventListener('pagehide', cleanup);
-        } catch (err) {
-          console.warn('Document PiP failed, trying popup:', err);
-          pipWin = null;
-        }
-      }
+function openPopupFallback(html, cleanup) {
+  pipWin = window.open(
+    '', 'streammesh_pip',
+    'width=320,height=220,resizable=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no'
+  );
+  if (pipWin) {
+    pipWin.document.write(html);
+    pipWin.document.close();
+    wireControls(pipWin.document, () => pipWin.close());
+    unsub = subscribeToChanges(pipWin);
+    pipWin.addEventListener('beforeunload', cleanup);
+  } else {
+    // Both failed
+    cleanup();
+  }
+}
 
-      // Fallback: popup window
-      if (!pipWin) {
-        pipWin = window.open(
-          '', 'streammesh_pip',
-          'width=320,height=220,resizable=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no'
-        );
-        if (pipWin) {
-          pipWin.document.write(html);
-          pipWin.document.close();
-          wireControls(pipWin.document, () => pipWin.close());
-          unsub = subscribeToChanges(pipWin);
-          pipWin.addEventListener('beforeunload', cleanup);
-        } else {
-          // Both failed
-          cleanup();
-          return;
-        }
-      }
-
-      winRef.current = pipWin;
-    }
-
-    openPiP();
-
-    return () => {
-      cancelled = true;
-      if (unsub) unsub();
-      destroyCycling();
-      if (winRef.current) {
-        try { winRef.current.close(); } catch {}
-        winRef.current = null;
-      }
-    };
-  }, []);
-
-  // Render nothing — the PiP is a separate window
-  return null;
+/**
+ * Close the mobile PiP window if open.
+ */
+export function closeMobilePiP() {
+  if (unsub) { unsub(); unsub = null; }
+  destroyCycling();
+  if (pipWin) {
+    try { pipWin.close(); } catch {}
+    pipWin = null;
+  }
 }
