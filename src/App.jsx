@@ -336,9 +336,9 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handlePiP}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                 >
-                  {pipOpen ? '✕ Close PiP' : '📺 Mini Player'}
+                  {pipOpen ? '✕ Close PiP' : '⊞ Mini Player'}
                 </button>
                 <span className="text-sm text-white/60">Share this layout</span>
               </div>
@@ -357,18 +357,13 @@ export default function App() {
               </span>
             </div>
             <div className="flex-1" />
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <LayoutSelect layoutKey={appState.layout} onChange={setLayout} isMobile={isMobile} />
-              <div className="bg-[#1a1a1a] px-3 py-2 rounded-xl border border-[#23272f]">
-                <span className="text-sm text-white/80 font-medium">
-                  {visibleCount}/{meta.maxTiles} tiles
-                </span>
-              </div>
               <button
                 onClick={handlePiP}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
               >
-                {pipOpen ? '✕ Close PiP' : '📺 PiP Player'}
+                {pipOpen ? '✕ Close PiP' : '⊞ PiP Player'}
               </button>
               <ShareLink appState={appState} isMobile={isMobile} />
             </div>
@@ -445,9 +440,14 @@ function Grid({ layout, activeCount, tiles, parentDomain, onChangeChannel, onTog
           />
         ))}
         {activeCount === 0 && (
-          <div className="rounded-2xl border border-dashed border-[#23272f] bg-[#151a23] flex flex-col items-center justify-center text-gray-500 text-sm py-12">
-            <span className="text-3xl mb-2">📺</span>
-            <span>Add some channels to get started</span>
+          <div className="rounded-2xl border border-dashed border-[#7c3aed]/20 bg-[#0f0f14] flex flex-col items-center justify-center gap-3 py-16">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#7c3aed]/25 to-[#a78bfa]/15 rounded-xl flex items-center justify-center border border-[#7c3aed]/20">
+              <span className="text-[#a78bfa] text-xl font-bold">S</span>
+            </div>
+            <div className="text-center">
+              <p className="text-white/50 text-sm font-medium">Add a channel to get started</p>
+              <p className="text-white/25 text-xs mt-1">Tap the layout selector above to begin</p>
+            </div>
           </div>
         )}
       </div>
@@ -491,13 +491,15 @@ function Grid({ layout, activeCount, tiles, parentDomain, onChangeChannel, onTog
         ) : (
           <div
             key={`empty-${idx}`}
-            className="rounded-2xl border border-dashed border-[#23272f] bg-[#151a23] flex flex-col items-center justify-center text-gray-500 text-sm transition hover:bg-[#23272f]/40 w-full h-full min-h-0"
+            className="rounded-2xl border border-dashed border-[#7c3aed]/15 bg-[#0f0f14] flex flex-col items-center justify-center gap-2 transition hover:border-[#7c3aed]/30 hover:bg-[#151a23] w-full h-full min-h-0"
             role="gridcell"
             aria-label="Empty grid cell"
             style={{ minHeight: 0 }}
           >
-            <span className="text-3xl mb-2">📺</span>
-            <span>Empty</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-[#7c3aed]/20 to-[#a78bfa]/10 rounded-lg flex items-center justify-center border border-[#7c3aed]/15">
+              <span className="text-[#a78bfa]/60 text-sm font-bold">S</span>
+            </div>
+            <span className="text-white/20 text-xs font-medium tracking-wide uppercase">Empty</span>
           </div>
         )
       )}
@@ -540,7 +542,7 @@ function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, on
     <div
       ref={wrapRef}
       id={typeof idx === "number" ? `tile-${idx}` : undefined}
-      className={`relative flex flex-col bg-[#181c24] rounded-2xl overflow-hidden border border-[#23272f] shadow-lg group ${
+      className={`relative flex flex-col bg-[#0d0d12] rounded-2xl overflow-hidden border border-[#23272f] shadow-xl group hover:border-[#7c3aed]/30 transition-colors duration-300 ${
         isStacked ? 'min-h-[300px]' : 'h-full min-h-0'
       }`}
       style={isStacked ? {} : { minHeight: 0, height: "100%" }}
@@ -601,9 +603,14 @@ function StreamTile({ tile, parentDomain, idx, onChangeChannel, onToggleChat, on
             )}
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 text-sm">
-            <span className="text-4xl mb-2">📺</span>
-            <span>Enter a channel above</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#7c3aed]/30 to-[#a78bfa]/20 rounded-xl flex items-center justify-center border border-[#7c3aed]/20">
+              <span className="text-[#a78bfa] text-xl font-bold">S</span>
+            </div>
+            <div className="text-center">
+              <p className="text-white/40 text-xs font-medium tracking-wide uppercase">No stream</p>
+              <p className="text-white/25 text-xs mt-0.5">enter a channel name above</p>
+            </div>
           </div>
         )}
       </div>
