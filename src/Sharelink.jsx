@@ -15,33 +15,33 @@ export default function ShareLink({ appState, isMobile }) {
     }
   };
   
+  // Mobile: filled purple share button (same as PiP, secondary action)
   if (isMobile) {
-    // Mobile: Minimal share button
     return (
       <button
-        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
-          copied 
-            ? 'bg-green-500 text-white shadow-lg' 
-            : 'bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white shadow-md hover:shadow-lg'
+        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-opacity ${
+          copied
+            ? 'bg-[#7c3aed]/60 text-white/80'
+            : 'bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white hover:opacity-90'
         }`}
         onClick={handleShare}
       >
-        {copied ? "✓ Copied!" : "📤 Share"}
+        {copied ? "Copied!" : "Share"}
       </button>
     );
   }
-  
-  // Desktop: Minimal share button
+
+  // Desktop: outlined — creates visual hierarchy vs filled PiP button
   return (
     <button
-      className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
-        copied 
-          ? 'bg-green-500 text-white shadow-lg' 
-          : 'bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white shadow-md hover:shadow-lg'
+      className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+        copied
+          ? 'border-[#7c3aed]/40 text-[#a78bfa]/60 bg-transparent'
+          : 'border-[#7c3aed] text-[#a78bfa] bg-transparent hover:bg-[#7c3aed]/10'
       }`}
       onClick={handleShare}
     >
-      {copied ? "✓ Copied!" : "📤 Share"}
+      {copied ? "Copied!" : "Share"}
     </button>
   );
 }

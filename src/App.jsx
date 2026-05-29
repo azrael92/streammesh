@@ -155,26 +155,36 @@ function getVisibleChannels(appState, visibleCount) {
 
 
 
-/** Compact layout selector (closed by default, shows current value) */
+// Grid icon — 4 squares, represents multi-stream layout concept
+function GridIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="2" y="2" width="9" height="9" rx="2"/>
+      <rect x="13" y="2" width="9" height="9" rx="2"/>
+      <rect x="2" y="13" width="9" height="9" rx="2"/>
+      <rect x="13" y="13" width="9" height="9" rx="2"/>
+    </svg>
+  );
+}
+
+/** Compact layout selector */
 function LayoutSelect({ layoutKey, onChange, isMobile }) {
   const layouts = getLayouts(isMobile);
   const entries = Object.entries(layouts);
-  
+
   return (
-    <label className="inline-flex items-center gap-2 text-xs text-white/70">
-      <span>{isMobile ? "View" : "Layout"}</span>
-      <select
-        className="bg-[#111319] border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
-        value={layoutKey}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {entries.map(([key, meta]) => (
-          <option key={key} value={key}>
-            {meta.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      className="bg-[#111319] border border-white/20 rounded-lg px-2 py-1.5 text-white text-sm cursor-pointer"
+      value={layoutKey}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label="Select layout"
+    >
+      {entries.map(([key, meta]) => (
+        <option key={key} value={key}>
+          {meta.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -311,64 +321,51 @@ export default function App() {
       {/* Top bar (no overlay, no left-side badges) */}
       <header className="sticky top-0 z-40 w-full bg-[#0b0b0b] border-b border-[#23272f] shadow">
         {isMobile ? (
-          // Mobile: Beautiful stacked layout with modern styling
-          <div className="px-4 py-4 space-y-4 bg-gradient-to-b from-[#0b0b0b] to-[#151a23]">
+          // Mobile layout
+          <div className="px-4 py-3 space-y-3 bg-[#0b0b0b]">
             {/* Top row: Logo and Layout Selector */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] rounded-lg flex items-center justify-center">
-                  <span className="text-white text-lg font-bold">S</span>
+                <div className="w-8 h-8 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] rounded-lg flex items-center justify-center text-white">
+                  <GridIcon size={16} />
                 </div>
-                <span className="text-xl font-bold select-none">
-                  Stream<span className="text-[#7c3aed]">MESH</span>
+                <span className="text-lg font-bold tracking-tight select-none">
+                  Stream<span className="text-[#a78bfa]">MESH</span>
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-white/40 bg-[#1a1a1a] px-2 py-1 rounded-lg">
-                  {visibleCount} streams
-                </span>
-                <LayoutSelect layoutKey={appState.layout} onChange={setLayout} isMobile={isMobile} />
-              </div>
+              <LayoutSelect layoutKey={appState.layout} onChange={setLayout} isMobile={isMobile} />
             </div>
-            
-            {/* Bottom row: Multiview PiP and Share buttons */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handlePiP}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-                >
-                  {pipOpen ? '✕ Close PiP' : '📺 Mini Player'}
-                </button>
-                <span className="text-sm text-white/60">Share this layout</span>
-              </div>
+
+            {/* Bottom row: PiP and Share */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePiP}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white hover:opacity-90 transition-opacity"
+              >
+                {pipOpen ? 'Close PiP' : 'PiP'}
+              </button>
               <ShareLink appState={appState} isMobile={isMobile} />
             </div>
           </div>
         ) : (
-          // Desktop: Beautiful horizontal layout with modern styling
-          <div className="flex items-center px-6 py-4 bg-gradient-to-r from-[#0b0b0b] to-[#151a23]">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white text-xl font-bold">S</span>
+          // Desktop: horizontal layout
+          <div className="flex items-center px-6 py-3 bg-[#0b0b0b]">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-9 h-9 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] rounded-xl flex items-center justify-center shadow-lg text-white">
+                <GridIcon size={18} />
               </div>
-              <span className="text-2xl font-bold select-none">
-                Stream<span className="text-[#7c3aed]">MESH</span>
+              <span className="text-xl font-bold tracking-tight select-none">
+                Stream<span className="text-[#a78bfa]">MESH</span>
               </span>
             </div>
             <div className="flex-1" />
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <LayoutSelect layoutKey={appState.layout} onChange={setLayout} isMobile={isMobile} />
-              <div className="bg-[#1a1a1a] px-3 py-2 rounded-xl border border-[#23272f]">
-                <span className="text-sm text-white/80 font-medium">
-                  {visibleCount}/{meta.maxTiles} tiles
-                </span>
-              </div>
               <button
                 onClick={handlePiP}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#10b981] to-[#34d399] text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] text-white shadow-md hover:opacity-90 transition-opacity"
               >
-                {pipOpen ? '✕ Close PiP' : '📺 PiP Player'}
+                {pipOpen ? 'Close PiP' : 'PiP'}
               </button>
               <ShareLink appState={appState} isMobile={isMobile} />
             </div>
